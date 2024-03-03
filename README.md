@@ -7,4 +7,6 @@ The user can click on a listing to see the bids other users have placed, and the
 
 Guest users who are not logged in can also view the listings, but they cannot bid.
 
+In order to log in the user must provide a email adress ending with @stud.noroff.no
+
 To run this application locally, you can download the zip file of the repostitory and run locally on you computer. I reccommend using the Live Server plug in on VS Code.
