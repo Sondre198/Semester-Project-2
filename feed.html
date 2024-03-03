@@ -1,0 +1,75 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feed</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar border-bottom">
+        <div class="container-fluid">
+            <div>
+                <span class="navbar-brand" id="user_name"></span>
+                <span id="user_credits"></span>
+            </div>
+            
+            <div>
+                <a class="btn btn-outline-primary" href="./edit-listing.html" id="btn-new-listing">New listing</a>
+                <button class="btn btn-outline-secondary" type="button" id="btn-logout">Log out</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-5 d-flex justify-content-between">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="switch-only-active">
+            <label class="form-check-label" for="switch-only-active">Only show active listings</label>
+        </div>
+        <a class="btn btn-secondary btn-sm" title="Remove tag filter" id="btn-remove-tag" href="./feed.html">&times; #<span id="filter-name"></span></a>
+    </main>
+
+    <main class="container mt-5" id="listings" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;"></main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./scripts/page.feed.js" type="module"></script>
+
+    <template id="listing-template">
+        <div class="card">
+            <div class="card-img-top carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner listing-media">
+
+                </div>
+            </div>
+            <div class="card-body h-100">
+                <h5 class="card-title listing-title"></h5>
+                <h6 class="card-subtitle">By <span class="listing-seller-name"></span>, <span class="listing-endsAt"></span></h6>
+                <p class="card-text listing-description"></p>
+            </div>
+            <div class="card-body border-top listing-tags" style="display: flex; gap: 4px; flex-wrap: wrap;"></div>
+            <div class="card-body border-top listing-actions" style="display: flex; gap: 4px;"></div>
+        </div>
+    </template>
+
+    <template id="tag-template">
+        <a class="badge bg-secondary">#<span class="tag-name"></span></a>
+    </template>
+
+    <template id="image-template">
+        <div class="carousel-item w-100" style="height: 300px;">
+            <img class="d-block w-100 h-100" style="object-fit: cover;" />
+        </div>
+    </template>
+
+    <template id="edit-button-template">
+        <button class="btn btn-primary">Edit</button>
+    </template>
+
+    <template id="delete-button-template">
+        <button class="btn btn-danger">Delete</button>
+    </template>
+
+    <template id="bid-button-template">
+        <button class="btn btn-primary">View bids</button>
+    </template>
+</body>
+</html>
