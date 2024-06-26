@@ -16,6 +16,18 @@ if (!user) {
     document.getElementById("btn-new-listing").style.display = "none"
 }
 
+
+document.getElementById("btn-search").onclick = searchListings;
+
+function searchListings() {
+    const searchQuery = document.getElementById("searchInput").value.toLowerCase();
+    const listingsElements = document.querySelectorAll("[data-id]");
+    listingsElements.forEach(element => {
+        const title = element.querySelector(".listing-title").textContent.toLowerCase();
+        element.style.display = title.includes(searchQuery) ? "" : "none";
+    });
+}
+
 /**
  * Callback invoked when the user clicks a tag.
  * @param {Listing} listing 
@@ -75,23 +87,23 @@ async function onBidListing(listing) {
     location.href = "/bids.html?id=" + listing.id
 }
 
-let filter = getUrlParameter("filter") ?? ""
-console.log("Filter: " + filter)
+let filter = getUrlParameter("filter") ?? "";
 if (filter == "active") {
-    filter = "&_active=true"
-    document.getElementById("switch-only-active").checked = true
-    document.getElementById("btn-remove-tag").remove()
+    filter = "&_active=true";
+    document.getElementById("switch-only-active").checked = true;
+    document.getElementById("btn-remove-tag").remove();
 }
 else if (filter.startsWith("tag:")) {
-    filter = "&_tag=" + filter.substring(4)
-    document.getElementById("filter-name").innerText = filter.substring(6)
+    filter = "&_tag=" + filter.substring(4);
+    document.getElementById("filter-name").innerText = filter.substring(6);
 }
 else {
-    console.error("Unknown filter: " + filter)
-    filter = ""
-    document.getElementById("btn-remove-tag").remove()
+    console.error("Unknown filter: " + filter);
+    filter = "";
+    document.getElementById("btn-remove-tag").remove();
 }
-document.getElementById("switch-only-active").onchange = e => location.href = document.getElementById("switch-only-active").checked ? "./feed.html?filter=active" : "./feed.html"
+
+document.getElementById("switch-only-active").onchange = e => location.href = document.getElementById("switch-only-active").checked ? "./feed.html?filter=active" : "./feed.html";
 
 /**
  * @typedef {{
