@@ -10,3 +10,7 @@ Guest users who are not logged in can also view the listings, but they cannot bi
 In order to log in the user must provide a email adress ending with @stud.noroff.no
 
 To run this application locally, you can download the zip file of the repostitory and run locally on you computer. I reccommend using the Live Server plug in on VS Code.
+
+## Style Guide
+
+For more details on the styling guidelines used in this project, please refer to the [Style Guide](./STYLE_GUIDE.md).

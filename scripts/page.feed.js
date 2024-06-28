@@ -1,209 +1,136 @@
-import { showMessageBox, showNetworkError } from "./module.messagebox.js"
-import { getUrlParameter } from "./module.page.js"
-import { buildFromTemplate, formatRelativeDate } from "./module.template.js"
-import {getCurrentUser, logout} from "./module.user.js"
+import { showMessageBox, showNetworkError } from "./module.messagebox.js";
+import { getUrlParameter } from "./module.page.js";
+import { buildFromTemplate, formatRelativeDate } from "./module.template.js";
+import { getCurrentUser, logout, updateUserAvatar } from "./module.user.js";
 
-const user = getCurrentUser(false)
+const user = getCurrentUser(false);
 
-document.getElementById("user_name").innerText=user?.name ?? "Guest"
-document.getElementById("user_credits").innerText= user ? (user.credits + "💳") : ''
-document.getElementById("btn-logout").onclick = () => logout()
+document.addEventListener("DOMContentLoaded", function() {
+    if (user) {
+        document.getElementById("user_name").innerText = user.name;
+        document.getElementById("user_credits").innerText = user.credits + "💳";
+        const userAvatar = document.getElementById("user_avatar");
+        userAvatar.src = user.avatar;
+        console.log("Setting user avatar src to:", user.avatar);
+    } else {
+        document.getElementById("user_name").innerText = "Guest";
+        document.getElementById("user_credits").innerText = '';
+        document.getElementById("btn-logout").innerText = "Login";
+        document.getElementById("btn-new-listing").style.display = "none";
+    }
+    document.getElementById("btn-logout").onclick = () => logout();
 
-// If the user is not logged in, change the button text to "Login"
-// The button does the same either way.
-if (!user) {
-    document.getElementById("btn-logout").innerText = "Login"
-    document.getElementById("btn-new-listing").style.display = "none"
-}
+    const btnSearch = document.getElementById("btn-search");
+    if (btnSearch) {
+        btnSearch.addEventListener('click', () => {
+            const searchQuery = document.getElementById("searchInput").value.toLowerCase();
+            searchListings(searchQuery);
+        });
+    } else {
+        console.error("Search button not found");
+    }
 
+    loadListings();
+});
 
-document.getElementById("btn-search").onclick = searchListings;
-
-function searchListings() {
-    const searchQuery = document.getElementById("searchInput").value.toLowerCase();
+function searchListings(query) {
     const listingsElements = document.querySelectorAll("[data-id]");
     listingsElements.forEach(element => {
         const title = element.querySelector(".listing-title").textContent.toLowerCase();
-        element.style.display = title.includes(searchQuery) ? "" : "none";
+        element.style.display = title.includes(query) ? "" : "none";
     });
 }
 
-/**
- * Callback invoked when the user clicks a tag.
- * @param {Listing} listing 
- * @param {string} tag 
- */
-function onClickTag(listing, tag) {
-    location.href = "/feed.html?filter=tag:" + tag
+async function loadListings() {
+    let filter = getUrlParameter("filter") ?? "";
+    if (filter === "active") {
+        filter = "&_active=true";
+        document.getElementById("switch-only-active").checked = true;
+        document.getElementById("btn-remove-tag").remove();
+    } else if (filter.startsWith("tag:")) {
+        filter = "&_tag=" + filter.substring(4);
+        document.getElementById("filter-name").innerText = filter.substring(4);
+    } else if (filter) {
+        console.error("Unknown filter:", filter);
+        document.getElementById("btn-remove-tag").remove();
+        filter = "";
+    }
+
+    const listingsContainer = document.getElementById("listings");
+    listingsContainer.innerHTML = ""; // Clear existing listings
+
+    const listings = await fetchListings(filter);
+    console.log(`Fetched listings:`, listings); // Log the listings
+
+    listings.forEach(listing => {
+        const element = buildFromTemplate("listing-template", builder => {
+            builder
+                .withAttribute('', 'data-id', listing.id)
+                .withAttribute('', 'data-seller', listing.seller.email)
+                .withAttribute('', 'data-owned', user?.email === listing.seller.email)
+                .withText('.listing-title', listing.title)
+                .withText('.listing-description', listing.description)
+                .withText('.listing-created', formatRelativeDate(listing.created))
+                .withText('.listing-updated', formatRelativeDate(listing.updated))
+                .withText('.listing-endsAt', "Ends " + formatRelativeDate(listing.endsAt))
+                .withText('.listing-seller-name', listing.seller.name)
+                .withText('.listing-seller-email', listing.seller.email)
+                .withAttribute('.listing-seller-avatar', 'src', listing.seller.avatar);
+
+            const carouselInner = builder.element.querySelector('.carousel-inner');
+            listing.media.forEach((url, index) => {
+                const imgElement = buildFromTemplate("image-template", imgBuilder => {
+                    imgBuilder
+                        .withAttribute('img', 'src', url)
+                        .withAttribute('img', 'title', "Image of " + listing.title)
+                        .withAttribute('', 'src', url)
+                        .withAttribute('', 'title', "Image of " + listing.title)
+                        .withHandler('', 'click', () => onClickImage(listing, url));
+                    if (index === 0) {
+                        imgBuilder.with('', (carouselItem) => carouselItem.classList.add('active'));
+                    }
+                    return imgBuilder;
+                });
+                carouselInner.appendChild(imgElement);
+            });
+
+            return builder;
+        });
+        listingsContainer.appendChild(element);
+    });
 }
 
-/**
- * Callback invoked when the user clicks an image.
- * @param {Listing} listing 
- * @param {string} imageUrl 
- */
-function onClickImage(listing, imageUrl) {
-
-}
-
-/**
- * Callback invoked when the user wants to edit their own listing.
- * @param {Listing} listing 
- */
-function onEditListing(listing) {
-    location.href = "/edit-listing.html?id=" + listing.id
-}
-
-/**
- * Callback invoked when the user wants to delete their own listing.
- * @param {Listing} listing 
- */
-async function onDeleteListing(listing) {
-
-    if (!confirm("Are you sure you want to delete this listing?"))
-        return;
-
-    const response = await fetch ("https://api.noroff.dev/api/v1/auction/listings/" + listing.id, {
-        method: "DELETE",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + user.accessToken
-        }
-    })
-
+async function fetchListings(filter) {
+    const response = await fetch(`https://api.noroff.dev/api/v1/auction/listings?_seller=true&_bids=true&_sort=created&order=desc` + filter);
     if (!response.ok) {
-        showNetworkError(await response.json())
-        return;
+        showNetworkError(await response.json());
+        return [];
     }
-
-    location.reload()
+    const listings = await response.json();
+    listings.forEach(listing => {
+        listing.created = new Date(listing.created);
+        listing.updated = new Date(listing.updated);
+        listing.endsAt = new Date(listing.endsAt);
+    });
+    return listings;
 }
 
-/**
- * Callback invoked when the user wants to bid on another users listing.
- * @param {Listing} listing 
- */
-async function onBidListing(listing) {
-    location.href = "/bids.html?id=" + listing.id
+function onClickImage(listing, imageUrl) {
+    location.href = `/bids.html?id=${listing.id}`;
 }
 
-let filter = getUrlParameter("filter") ?? "";
-if (filter == "active") {
-    filter = "&_active=true";
-    document.getElementById("switch-only-active").checked = true;
-    document.getElementById("btn-remove-tag").remove();
-}
-else if (filter.startsWith("tag:")) {
-    filter = "&_tag=" + filter.substring(4);
-    document.getElementById("filter-name").innerText = filter.substring(6);
-}
-else {
-    console.error("Unknown filter: " + filter);
-    filter = "";
-    document.getElementById("btn-remove-tag").remove();
-}
-
-document.getElementById("switch-only-active").onchange = e => location.href = document.getElementById("switch-only-active").checked ? "./feed.html?filter=active" : "./feed.html";
-
-/**
- * @typedef {{
- * id:string;
- * title:string;
- * description:string;
- * tags:string[];
- * media:string[];
- * created:Date;
- * updated:Date;
- * endsAt:Date;
- * seller: {
- *   name:string;
- *   email:string;
- *   avatar:string;
- * }
- * }} Listing
- */
-
-/**
- * @type {[Listing]}
- */
-const listings = await fetch("https://api.noroff.dev/api/v1/auction/listings?_seller=true" + filter).then(x => x.json()).then(list => { 
-    list.forEach(item => {
-        item.created = new Date(item.created)
-        item.updated = new Date(item.updated)
-        item.endsAt = new Date(item.endsAt)
-    })
-    return list
-})
-
-console.log(listings)
-
-const listingsContainer = document.getElementById("listings")
-for (const listing of listings) {
-    
-    const ownedByCurrentUser = user?.email == listing.seller.email
-
-    const element = buildFromTemplate("listing-template", builder => builder
-        .withAttribute('', 'data-id', listing.id)
-        .withAttribute('', 'data-seller', listing.seller.email)
-        .withAttribute('', 'data-owned', ownedByCurrentUser)
-        .withText('.listing-title', listing.title)
-        .withText('.listing-description', listing.description)
-        .withText('.listing-created', formatRelativeDate(listing.created))
-        .withText('.listing-updated', formatRelativeDate(listing.created))
-        .withText('.listing-endsAt', "Ends " + formatRelativeDate(listing.endsAt))
-        .withText('.listing-seller-name', listing.seller.name)
-        .withText('.listing-seller-email', listing.seller.email)
-        .withAttribute('.listing-seller-avatar', 'src', listing.seller.avatar))
-
-    for (const tag of listing?.tags ?? []) {
-        element.querySelector(".listing-tags")?.appendChild(buildFromTemplate("tag-template", builder => builder
-            .withText('.tag-name', tag)
-            .withHandler('.tag-name', 'click', () => onClickTag(listing, tag))))
+// Function to handle avatar update
+document.getElementById("user_avatar").onclick = () => {
+    const newAvatarUrl = prompt("Enter the URL of your new avatar:");
+    if (newAvatarUrl) {
+        updateUserAvatar(newAvatarUrl).then(updatedUser => {
+            document.getElementById("user_avatar").src = newAvatarUrl;
+            showMessageBox("Success", "Avatar updated successfully.");
+            console.log("Updated user avatar src to:", newAvatarUrl); // Log the new avatar URL
+        }).catch(err => {
+            const errorMessage = err.message || "Failed to update avatar.";
+            showMessageBox("Error", errorMessage);
+            console.error("Error updating avatar:", err);
+        });
     }
-    if (!listing.tags?.length) {
-        element.querySelector(".listing-tags")?.remove()
-    }
-
-    for (const url of listing?.media ?? []) {
-        element.querySelector(".listing-media")?.appendChild(buildFromTemplate("image-template", builder => builder
-            .withAttribute('img', 'src', url)
-            .withAttribute('img', 'title', "Image of " + listing.title)
-            .withAttribute('', 'src', url)
-            .withAttribute('', 'title', "Image of " + listing.title)
-            .withHandler('', 'click', () => onClickImage(listing, url))))
-    }
-
-    const actions = element.querySelector(".listing-actions")
-
-    if (ownedByCurrentUser) {
-        // Add buttons for listings owned by the current user.
-
-        actions?.append(buildFromTemplate("edit-button-template", builder => builder
-            .withHandler('', 'click', () => onEditListing(listing))))
-
-        actions?.append(buildFromTemplate("delete-button-template", builder => builder
-            .withHandler('', 'click', () => onDeleteListing(listing))))
-        
-    }
-    else if (user) {
-        // Add buttons for listings not owned by the current user.
-
-        actions?.append(buildFromTemplate("bid-button-template", builder => builder
-            .withHandler('', 'click', () => onBidListing(listing))))
-    }
-    else {
-        // Add buttons when no user is signed in.
-
-        const label = document.createElement("i")
-        label.innerText = "Login to bid"
-        actions?.appendChild(label)
-    }
-
-    element.querySelector(".carousel")?.setAttribute("id", "carousel-" + listing.id)
-    element.querySelector(".carousel-item")?.classList?.add("active")
-
-    listingsContainer.appendChild(element)
-    new bootstrap.Carousel(element.querySelector("#carousel-" + listing.id), {
-        interval: 2000
-    })
-}
+};

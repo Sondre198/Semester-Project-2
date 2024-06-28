@@ -1,0 +1,114 @@
+@import 'node_modules/bootstrap/scss/bootstrap';
+
+// Variables to customize Bootstrap
+$body-bg: white; 
+$body-color: #343a40;
+$primary: #0f0951;
+$secondary: #7efffd;
+$success: #D5E7B8;
+$info: #ECEBC9;
+$warning: #dc3545;
+$danger: #dc3545;
+$light: #F6F6DB;
+$dark: #343a40;
+
+// Typography
+$font-family-sans-serif: 'Trebuchet MS', Helvetica, Arial, sans-serif;
+$headings-font-weight: 700;
+
+@import 'node_modules/bootstrap/scss/bootstrap';
+
+// Custom styles
+body {
+  background-color: $body-bg;
+  color: $body-color;
+  font-family: $font-family-sans-serif;
+}
+
+.navbar {
+  background-color: $primary;
+  padding: 0.5rem 1rem;
+
+  .navbar-brand, #user_name, #user_credits {
+    color: $secondary;
+    font-family: $font-family-sans-serif;
+  }
+
+  .container-fluid {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    div:first-child {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      img {
+        width: 30px;
+        height: 30px;
+      }
+    }
+
+    div:last-child {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      input.form-control {
+        width: auto;
+        min-width: 200px;
+      }
+    }
+  }
+
+  .btn {
+    margin-left: 0.5rem;
+  }
+}
+
+.card {
+  border: 2.5px solid $primary;
+  border-radius: 0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-family: $font-family-sans-serif;
+  padding: 1rem;
+  background-color: #fff;
+
+  .card-title {
+    font-weight: $headings-font-weight;
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .card-subtitle {
+    font-weight: normal;
+    margin-bottom: 1rem;
+  }
+
+  .card-text {
+    margin-bottom: 1rem;
+  }
+}
+
+.btn-primary {
+  background-color: $secondary;
+  border-color: $secondary;
+  color: $primary;
+  --bs-btn-hover-bg: #eeeeee;
+  --bs-btn-hover-border-color: #fff;
+  --bs-btn-hover-color: black;
+  font-weight: bold;
+  
+}
+
+
+.btn-secondary {
+  background-color: $secondary;
+  border-color: $secondary;
+  color: $primary;
+  --bs-btn-hover-bg: #fff;
+  --bs-btn-hover-border-color: #fff;
+  --bs-btn-hover-color: black;
+  font-weight: bold;
+}

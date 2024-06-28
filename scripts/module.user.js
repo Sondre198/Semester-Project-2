@@ -3,10 +3,10 @@ import { showNetworkError } from "./module.messagebox.js";
 /**
  * Login credentials for an existing user.
  * @typedef {{
-* email:string; 
-* password:string;
-* }} UserCredentials 
-*/
+ * email:string; 
+ * password:string;
+ * }} UserCredentials 
+ */
 
 /**
  * User account details.
@@ -20,31 +20,33 @@ import { showNetworkError } from "./module.messagebox.js";
  */
 
 /**
- * Signs the user in and returns true if the login was successfull
- * @param {string} email The users email
- * @param {string} password The users password
+ * Signs the user in and returns true if the login was successful
+ * @param {string} email The user's email
+ * @param {string} password The user's password
  * @returns {Promise}
  */
 export async function login(email, password) {
-
-    // Send login request to API
     const response = await fetch(`https://api.noroff.dev/api/v1/auction/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
-    })
+    });
 
-    // Handle failed login attempts
     if (!response.ok) {
-        return showNetworkError(await response.json())
+        return showNetworkError(await response.json());
     }
-    
-    // Save details in session storage.
-    sessionStorage.setItem("user", JSON.stringify(await response.json()))
 
-    // The login was successful.
-    // Navigate to the feed page.
-    location.href = "./feed.html"
+    const userData = await response.json();
+    console.log("Login response data:", userData);
+
+    if (!userData.accessToken) {
+        throw new Error("No access token received during login.");
+    }
+
+    sessionStorage.setItem("user", JSON.stringify(userData));
+    console.log("User saved in session storage:", JSON.parse(sessionStorage.getItem("user")));
+
+    location.href = "./feed.html";
 }
 
 /**
@@ -53,22 +55,21 @@ export async function login(email, password) {
  * @returns {Promise}
  */
 export async function register(details) {
-
-    // Send login request to API
     const response = await fetch(`https://api.noroff.dev/api/v1/auction/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(details)
-    })
+    });
 
-    // Handle failed login attempts
     if (!response.ok) {
-        return showNetworkError(await response.json())
+        return showNetworkError(await response.json());
     }
-      
-    // Register was successful.
-    // Navigate to the login
-    location.href = "./"
+
+    const userData = await response.json();
+    console.log("Register response data:", userData);
+
+    // Log the user in to retrieve the token
+    await login(details.email, details.password);
 }
 
 /**
@@ -77,32 +78,62 @@ export async function register(details) {
  * @returns {UserDetails} Details about the currently signed in user.
  */
 export function getCurrentUser(navigateToLogin = true) {
+    const userJson = sessionStorage.getItem("user");
 
-    // Session storage cache for user details
-    const userJson = sessionStorage.getItem("user")
-
-    if (!userJson && !navigateToLogin)
-        // There is no user currently signed in
-        // Consumer sais that is okay.
+    if (!userJson && !navigateToLogin) {
         return null;
-
-    if (!userJson) {
-        // There is no user currently signed in
-        // Consumer sais that is not okay.
-        location.href = "./"
-        throw new Error("Not signed in")
     }
 
-    // Parse the details to an object
-    return JSON.parse(userJson) 
+    if (!userJson) {
+        location.href = "./";
+        throw new Error("Not signed in");
+    }
+
+    const user = JSON.parse(userJson);
+    console.log("Retrieved user from session storage:", user);
+
+    if (!user.accessToken) {
+        throw new Error("No access token found in session storage.");
+    }
+
+    return user;
+}
+
+/**
+ * Updates the user's avatar.
+ * @param {string} newAvatarUrl The new URL of the user's avatar.
+ * @returns {Promise<UserDetails>}
+ */
+export async function updateUserAvatar(newAvatarUrl) {
+    const user = getCurrentUser(true);
+    if (!user || !user.name) throw new Error("User not logged in or user name is missing");
+
+    console.log("Current user data:", user);
+
+    const response = await fetch(`https://api.noroff.dev/api/v1/auction/profiles/${user.name}/media`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${user.accessToken}`
+        },
+        body: JSON.stringify({ avatar: newAvatarUrl })
+    });
+
+    if (!response.ok) {
+        console.log("Error response:", await response.json());
+        throw await response.json();
+    }
+
+    const updatedUser = await response.json();
+    
+    // Ensure the access token is preserved
+    updatedUser.accessToken = user.accessToken;
+    
+    sessionStorage.setItem("user", JSON.stringify(updatedUser));
+    return updatedUser;
 }
 
 export function logout() {
-
-    // Delete logged in user data
-    sessionStorage.setItem("user", "")
-
-    // Go to login
-    location.href = "./"
-
+    sessionStorage.removeItem("user");
+    location.href = "./";
 }
